@@ -109,8 +109,8 @@ app.get('/api/yampi', async (req, res) => {
       if (page <= totalPages && page <= MAX_PAGES) await sleep(300);
     }
 
-    const aprovados = pedidos.filter(p => p.status && ['paid','approved','complete'].includes(p.status.alias));
-    const cancelados = pedidos.filter(p => p.status && ['cancelled','canceled'].includes(p.status.alias));
+    const aprovados = pedidos.filter(p => p.status && !['canceled','cancelled','waiting_payment'].includes(p.status.alias));
+const cancelados = pedidos.filter(p => p.status && ['canceled','cancelled'].includes(p.status.alias));
     const somaReceita = arr => arr.reduce((s, p) => s + parseFloat(p.total || 0), 0);
     const receitaAprovada = somaReceita(aprovados);
 
