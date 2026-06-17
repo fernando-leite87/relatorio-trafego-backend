@@ -91,7 +91,14 @@ app.get('/api/yampi', async (req, res) => {
     const pedidos = [];
 
     while (page <= totalPages) {
-      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?include=items&limit=100&page=${page}&created_at[start]=${from}&created_at[end]=${to}`;
+      const params = new URLSearchParams({
+        include: 'items',
+        limit: '100',
+        page: String(page),
+      });
+      params.append('q[created_at_gteq]', `${from} 00:00:00`);
+      params.append('q[created_at_lteq]', `${to} 23:59:59`);
+      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?${params.toString()}`;
       const r = await fetch(url, {
         headers: { 'User-Token': YAMPI_TOKEN, 'User-Secret-Key': YAMPI_SECRET, 'Content-Type': 'application/json' },
       });
