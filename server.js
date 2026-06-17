@@ -24,6 +24,10 @@ const CONTAS = [
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+const STATUS_CANCELADO = ['canceled', 'cancelled'];
+const STATUS_AGUARDANDO = ['waiting_payment', 'pending'];
+const STATUS_APROVADO = s => !STATUS_CANCELADO.includes(s) && !STATUS_AGUARDANDO.includes(s);
+
 async function fetchFbAccount(accountId, from, to) {
   const fields = 'spend,impressions,clicks,cpm,ctr';
   const timeRange = JSON.stringify({ since: from, until: to });
@@ -50,6 +54,7 @@ app.get('/api/facebook', async (req, res) => {
       try {
         const dias = await fetchFbAccount(conta.id, from, to);
         let spendTotal = 0, impressoesTotal = 0, cliquesTotal = 0;
+
         for (const dia of dias) {
           const spendRaw = parseFloat(dia.spend || 0);
           const spendBrl = conta.usd ? spendRaw * cambiof : spendRaw;
@@ -62,6 +67,7 @@ app.get('/api/facebook', async (req, res) => {
           if (!evolucaoDiaria[date]) evolucaoDiaria[date] = { date, spend: 0 };
           evolucaoDiaria[date].spend += spendFinal;
         }
+
         resultados.push({ id: conta.id, name: conta.name, usd: conta.usd, imposto_fb: conta.imposto_fb, spend: spendTotal, impressions: impressoesTotal, clicks: cliquesTotal });
       } catch (e) {
         resultados.push({ id: conta.id, name: conta.name, spend: 0, error: e.message });
@@ -109,15 +115,17 @@ app.get('/api/yampi', async (req, res) => {
       if (page <= totalPages && page <= MAX_PAGES) await sleep(300);
     }
 
-    const aprovados = pedidos.filter(p => p.status && !['canceled','cancelled','waiting_payment'].includes(p.status.alias));
-const cancelados = pedidos.filter(p => p.status && ['canceled','cancelled'].includes(p.status.alias));
+    const alias = p => p.status?.alias || '';
+    const aprovados = pedidos.filter(p => STATUS_APROVADO(alias(p)));
+    const cancelados = pedidos.filter(p => STATUS_CANCELADO.includes(alias(p)));
     const somaReceita = arr => arr.reduce((s, p) => s + parseFloat(p.total || 0), 0);
     const receitaAprovada = somaReceita(aprovados);
 
     const evolucaoDiaria = {};
     aprovados.forEach(p => {
-      const date = (p.created_at || '').slice(0, 10);
-      if (!date) return;
+      const raw = p.created_at?.date || p.created_at || '';
+      const date = String(raw).slice(0, 10);
+      if (!date || date.length < 10) return;
       if (!evolucaoDiaria[date]) evolucaoDiaria[date] = { date, receita: 0, pedidos: 0 };
       evolucaoDiaria[date].receita += parseFloat(p.total || 0);
       evolucaoDiaria[date].pedidos += 1;
