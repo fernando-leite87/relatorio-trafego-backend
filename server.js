@@ -26,7 +26,6 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const STATUS_CANCELADO = ['canceled', 'cancelled'];
 const STATUS_AGUARDANDO = ['waiting_payment', 'pending'];
-const STATUS_APROVADO = s => !STATUS_CANCELADO.includes(s) && !STATUS_AGUARDANDO.includes(s);
 
 async function fetchFbAccount(accountId, from, to) {
   const fields = 'spend,impressions,clicks,cpm,ctr';
@@ -54,7 +53,6 @@ app.get('/api/facebook', async (req, res) => {
       try {
         const dias = await fetchFbAccount(conta.id, from, to);
         let spendTotal = 0, impressoesTotal = 0, cliquesTotal = 0;
-
         for (const dia of dias) {
           const spendRaw = parseFloat(dia.spend || 0);
           const spendBrl = conta.usd ? spendRaw * cambiof : spendRaw;
@@ -67,7 +65,6 @@ app.get('/api/facebook', async (req, res) => {
           if (!evolucaoDiaria[date]) evolucaoDiaria[date] = { date, spend: 0 };
           evolucaoDiaria[date].spend += spendFinal;
         }
-
         resultados.push({ id: conta.id, name: conta.name, usd: conta.usd, imposto_fb: conta.imposto_fb, spend: spendTotal, impressions: impressoesTotal, clicks: cliquesTotal });
       } catch (e) {
         resultados.push({ id: conta.id, name: conta.name, spend: 0, error: e.message });
@@ -99,7 +96,7 @@ app.get('/api/yampi', async (req, res) => {
     const MAX_PAGES = 10;
 
     while (page <= totalPages && page <= MAX_PAGES) {
-      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?limit=100&page=${page}&created_at_start=${from}&created_at_end=${to}`;
+      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?include=status&limit=100&page=${page}&created_at_start=${from}&created_at_end=${to}`;
       const r = await fetch(url, {
         headers: {
           'User-Token': YAMPI_TOKEN,
@@ -112,22 +109,31 @@ app.get('/api/yampi', async (req, res) => {
       (data.data || []).forEach(p => pedidos.push(p));
       totalPages = data.meta?.pagination?.total_pages || 1;
       page++;
-      if (page <= totalPages && page <= MAX_PAGES) await sleep(300);
+      if (page <= totalPages) await sleep(300);
     }
 
-    const alias = p => p.status?.alias || '';
-    const aprovados = pedidos.filter(p => STATUS_APROVADO(alias(p)));
-    const cancelados = pedidos.filter(p => STATUS_CANCELADO.includes(alias(p)));
-    const somaReceita = arr => arr.reduce((s, p) => s + parseFloat(p.total || 0), 0);
+    const getStatus = p => p.status?.data?.alias || p.status?.alias || '';
+    const getTotal = p => parseFloat(p.value || p.total_value || p.total || 0);
+    const getDate = p => {
+      const raw = p.created_at?.date || p.created_at || '';
+      return String(raw).slice(0, 10);
+    };
+
+    const aprovados = pedidos.filter(p => {
+      const s = getStatus(p);
+      return s && !STATUS_CANCELADO.includes(s) && !STATUS_AGUARDANDO.includes(s);
+    });
+    const cancelados = pedidos.filter(p => STATUS_CANCELADO.includes(getStatus(p)));
+
+    const somaReceita = arr => arr.reduce((s, p) => s + getTotal(p), 0);
     const receitaAprovada = somaReceita(aprovados);
 
     const evolucaoDiaria = {};
     aprovados.forEach(p => {
-      const raw = p.created_at?.date || p.created_at || '';
-      const date = String(raw).slice(0, 10);
+      const date = getDate(p);
       if (!date || date.length < 10) return;
       if (!evolucaoDiaria[date]) evolucaoDiaria[date] = { date, receita: 0, pedidos: 0 };
-      evolucaoDiaria[date].receita += parseFloat(p.total || 0);
+      evolucaoDiaria[date].receita += getTotal(p);
       evolucaoDiaria[date].pedidos += 1;
     });
 
