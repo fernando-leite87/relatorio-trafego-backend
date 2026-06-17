@@ -91,16 +91,13 @@ app.get('/api/yampi', async (req, res) => {
     const pedidos = [];
 
     while (page <= totalPages) {
-      const params = new URLSearchParams({
-        include: 'items',
-        limit: '100',
-        page: String(page),
-      });
-      params.append('q[created_at_gteq]', `${from} 00:00:00`);
-      params.append('q[created_at_lteq]', `${to} 23:59:59`);
-      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?${params.toString()}`;
+      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?limit=100&page=${page}&created_at_start=${from}&created_at_end=${to}`;
       const r = await fetch(url, {
-        headers: { 'User-Token': YAMPI_TOKEN, 'User-Secret-Key': YAMPI_SECRET, 'Content-Type': 'application/json' },
+        headers: {
+          'User-Token': YAMPI_TOKEN,
+          'User-Secret-Key': YAMPI_SECRET,
+          'Content-Type': 'application/json',
+        },
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.message || 'Erro Yampi');
