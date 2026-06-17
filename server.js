@@ -96,7 +96,7 @@ app.get('/api/yampi', async (req, res) => {
     const MAX_PAGES = 10;
 
     while (page <= totalPages && page <= MAX_PAGES) {
-      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?include=status&limit=100&page=${page}&created_at_start=${from}&created_at_end=${to}`;
+      const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?include=status&limit=100&page=${page}&date=${from}&date_end=${to}`;
       const r = await fetch(url, {
         headers: {
           'User-Token': YAMPI_TOKEN,
