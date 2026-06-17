@@ -50,7 +50,6 @@ app.get('/api/facebook', async (req, res) => {
       try {
         const dias = await fetchFbAccount(conta.id, from, to);
         let spendTotal = 0, impressoesTotal = 0, cliquesTotal = 0;
-
         for (const dia of dias) {
           const spendRaw = parseFloat(dia.spend || 0);
           const spendBrl = conta.usd ? spendRaw * cambiof : spendRaw;
@@ -63,7 +62,6 @@ app.get('/api/facebook', async (req, res) => {
           if (!evolucaoDiaria[date]) evolucaoDiaria[date] = { date, spend: 0 };
           evolucaoDiaria[date].spend += spendFinal;
         }
-
         resultados.push({ id: conta.id, name: conta.name, usd: conta.usd, imposto_fb: conta.imposto_fb, spend: spendTotal, impressions: impressoesTotal, clicks: cliquesTotal });
       } catch (e) {
         resultados.push({ id: conta.id, name: conta.name, spend: 0, error: e.message });
@@ -92,8 +90,9 @@ app.get('/api/yampi', async (req, res) => {
 
     let page = 1, totalPages = 1;
     const pedidos = [];
+    const MAX_PAGES = 10;
 
-    while (page <= totalPages) {
+    while (page <= totalPages && page <= MAX_PAGES) {
       const url = `https://api.dooki.com.br/v2/${YAMPI_ALIAS}/orders?limit=100&page=${page}&created_at_start=${from}&created_at_end=${to}`;
       const r = await fetch(url, {
         headers: {
@@ -103,17 +102,11 @@ app.get('/api/yampi', async (req, res) => {
         },
       });
       const data = await r.json();
-      if (!r.ok) {
-        if (r.status === 429) {
-          await sleep(2000);
-          continue;
-        }
-        throw new Error(data.message || 'Erro Yampi');
-      }
+      if (!r.ok) throw new Error(data.message || `Erro Yampi: ${r.status}`);
       (data.data || []).forEach(p => pedidos.push(p));
       totalPages = data.meta?.pagination?.total_pages || 1;
       page++;
-      await sleep(500);
+      if (page <= totalPages && page <= MAX_PAGES) await sleep(300);
     }
 
     const aprovados = pedidos.filter(p => p.status && ['paid','approved','complete'].includes(p.status.alias));
