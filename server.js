@@ -22,6 +22,8 @@ const CONTAS = [
   { id: 'act_904498949071872',  name: 'BMP - 02',            usd: true,  imposto_fb: false },
 ];
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 async function fetchFbAccount(accountId, from, to) {
   const fields = 'spend,impressions,clicks,cpm,ctr';
   const timeRange = JSON.stringify({ since: from, until: to });
@@ -66,6 +68,7 @@ app.get('/api/facebook', async (req, res) => {
       } catch (e) {
         resultados.push({ id: conta.id, name: conta.name, spend: 0, error: e.message });
       }
+      await sleep(300);
     }
 
     res.json({
@@ -100,10 +103,17 @@ app.get('/api/yampi', async (req, res) => {
         },
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.message || 'Erro Yampi');
+      if (!r.ok) {
+        if (r.status === 429) {
+          await sleep(2000);
+          continue;
+        }
+        throw new Error(data.message || 'Erro Yampi');
+      }
       (data.data || []).forEach(p => pedidos.push(p));
       totalPages = data.meta?.pagination?.total_pages || 1;
       page++;
+      await sleep(500);
     }
 
     const aprovados = pedidos.filter(p => p.status && ['paid','approved','complete'].includes(p.status.alias));
