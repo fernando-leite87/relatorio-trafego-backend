@@ -113,7 +113,7 @@ app.get('/api/yampi', async (req, res) => {
     }
 
     const getStatus = p => p.status?.data?.alias || p.status?.alias || '';
-    const getTotal = p => parseFloat(p.value || p.total_value || p.total || 0);
+    const getTotal = p => parseFloat(p.value_total || p.value || 0);
     const getDate = p => {
       const raw = p.created_at?.date || p.created_at || '';
       return String(raw).slice(0, 10);
