@@ -11,19 +11,19 @@ const YAMPI_TOKEN = process.env.YAMPI_TOKEN;
 const YAMPI_SECRET = process.env.YAMPI_SECRET;
 
 const CONTAS = [
-  { id: 'act_1030253875028322', name: 'Gabriela Barbosa BM', usd: false, imposto_fb: true },
-  { id: 'act_796659185083206',  name: 'Julia Sales',         usd: false, imposto_fb: true },
-  { id: 'act_889783945836280',  name: 'Elisa Rezende',       usd: false, imposto_fb: true },
-  { id: 'act_1183800759785720', name: 'Modalivio 03',        usd: false, imposto_fb: false },
-  { id: 'act_171208025388700',  name: 'PF20 Gabriela BM',   usd: true,  imposto_fb: false },
-  { id: 'act_3779787465666043', name: 'BMP - 01',            usd: true,  imposto_fb: false },
-  { id: 'act_1687611685734606', name: 'BMP - 03',            usd: true,  imposto_fb: false },
-  { id: 'act_860712357015194',  name: 'Modalivio 05',        usd: true,  imposto_fb: false },
-  { id: 'act_904498949071872',  name: 'BMP - 02',            usd: true,  imposto_fb: false },
-  { id: 'act_1730375018312705', name: 'BMP - 05',                usd: true,  imposto_fb: false },
-  { id: 'act_1739080380435932', name: 'PF20 Gabriela BM U$ - 2', usd: true,  imposto_fb: false },
-  { id: 'act_990958133700724',  name: 'Gabriela 02 - 01',        usd: false, imposto_fb: true },
-  { id: 'act_2228193904251281', name: 'BMP - 04',                usd: true,  imposto_fb: false },
+  { id: 'act_1030253875028322', name: 'Gabriela Barbosa BM',      usd: false, imposto_fb: true },
+  { id: 'act_796659185083206',  name: 'Julia Sales',              usd: false, imposto_fb: true },
+  { id: 'act_889783945836280',  name: 'Elisa Rezende',            usd: false, imposto_fb: true },
+  { id: 'act_1183800759785720', name: 'Modalivio 03',             usd: false, imposto_fb: false },
+  { id: 'act_990958133700724',  name: 'Gabriela 02 - 01',         usd: false, imposto_fb: true },
+  { id: 'act_171208025388700',  name: 'PF20 Gabriela BM',         usd: true,  imposto_fb: false },
+  { id: 'act_3779787465666043', name: 'BMP - 01',                 usd: true,  imposto_fb: false },
+  { id: 'act_1687611685734606', name: 'BMP - 03',                 usd: true,  imposto_fb: false },
+  { id: 'act_860712357015194',  name: 'Modalivio 05',             usd: true,  imposto_fb: false },
+  { id: 'act_904498949071872',  name: 'BMP - 02',                 usd: true,  imposto_fb: false },
+  { id: 'act_1730375018312705', name: 'BMP - 05',                 usd: true,  imposto_fb: false },
+  { id: 'act_1739080380435932', name: 'PF20 Gabriela BM U$ - 2',  usd: true,  imposto_fb: false },
+  { id: 'act_2228193904251281', name: 'BMP - 04',                 usd: true,  imposto_fb: false },
 ];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -43,7 +43,7 @@ async function fetchFbAccount(accountId, from, to) {
 
 app.get('/api/facebook', async (req, res) => {
   try {
-    const { from, to, cambio = 5.70, imposto_fb_pct = 3.68, contas_ativas } = req.query;
+    const { from, to, cambio = 5.09, imposto_fb_pct = 0, contas_ativas } = req.query;
     if (!from || !to) return res.status(400).json({ error: 'Informe from e to' });
 
     const cambiof = parseFloat(cambio);
@@ -116,25 +116,20 @@ app.get('/api/yampi', async (req, res) => {
       if (page <= totalPages) await sleep(300);
     }
 
-    const getStatus = p => p.status?.data?.alias || p.status?.alias || '';
-    const getTotal = p => parseFloat(p.value_total || p.value || 0);
-    const getDate = p => {
-      const raw = p.created_at?.date || p.created_at || '';
-      return String(raw).slice(0, 10);
-    };
-
+    const alias = p => p.status?.data?.alias || p.status?.alias || '';
     const aprovados = pedidos.filter(p => {
-      const s = getStatus(p);
+      const s = alias(p);
       return s && !STATUS_CANCELADO.includes(s) && !STATUS_AGUARDANDO.includes(s);
     });
-    const cancelados = pedidos.filter(p => STATUS_CANCELADO.includes(getStatus(p)));
-
+    const cancelados = pedidos.filter(p => STATUS_CANCELADO.includes(alias(p)));
+    const getTotal = p => parseFloat(p.value_total || p.value || 0);
     const somaReceita = arr => arr.reduce((s, p) => s + getTotal(p), 0);
     const receitaAprovada = somaReceita(aprovados);
 
     const evolucaoDiaria = {};
     aprovados.forEach(p => {
-      const date = getDate(p);
+      const raw = p.created_at?.date || p.created_at || '';
+      const date = String(raw).slice(0, 10);
       if (!date || date.length < 10) return;
       if (!evolucaoDiaria[date]) evolucaoDiaria[date] = { date, receita: 0, pedidos: 0 };
       evolucaoDiaria[date].receita += getTotal(p);
