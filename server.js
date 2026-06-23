@@ -20,6 +20,10 @@ const CONTAS = [
   { id: 'act_1687611685734606', name: 'BMP - 03',            usd: true,  imposto_fb: false },
   { id: 'act_860712357015194',  name: 'Modalivio 05',        usd: true,  imposto_fb: false },
   { id: 'act_904498949071872',  name: 'BMP - 02',            usd: true,  imposto_fb: false },
+  { id: 'act_1730375018312705', name: 'BMP - 05',                usd: true,  imposto_fb: false },
+  { id: 'act_1739080380435932', name: 'PF20 Gabriela BM U$ - 2', usd: true,  imposto_fb: false },
+  { id: 'act_990958133700724',  name: 'Gabriela 02 - 01',        usd: false, imposto_fb: true },
+  { id: 'act_2228193904251281', name: 'BMP - 04',                usd: true,  imposto_fb: false },
 ];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
